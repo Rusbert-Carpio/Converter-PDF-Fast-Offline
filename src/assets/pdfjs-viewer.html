@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: sans-serif;
+        }
+        
+        #viewer {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: #000;
+            z-index: 10;
+        }
+        
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <iframe id="viewer"></iframe>
+    <script>
+        // Recibe: ?file=<encoded-uri>
+        const params = new URLSearchParams(location.search);
+        const file = params.get("file");
+        if (!file) {
+            document.body.innerHTML = "<div style='padding:16px'>No file</div>";
+        } else {
+            // Usamos pdf.js online viewer
+            const pdfjs = "https://mozilla.github.io/pdf.js/web/viewer.html?file=" + encodeURIComponent(file);
+            document.getElementById("viewer").src = pdfjs;
+        }
+    </script>
+</body>
+
+</html>
