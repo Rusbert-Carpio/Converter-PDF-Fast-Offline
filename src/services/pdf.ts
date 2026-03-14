@@ -1,115 +1,109 @@
 import * as FileSystem from "expo-file-system/legacy";
-import * as Print from "expo-print";
+import * as ImageManipulator from "expo-image-manipulator";
+import { PDFDocument } from "pdf-lib";
 
-/**
- * Convierte un URI (file:// o content://) a base64.
- * - Primero intenta FileSystem.readAsStringAsync (rápido para file://).
- * - Si falla (ej. algunos content:// en Android), usa fetch + FileReader.
- */
-async function uriToBase64(uri: string): Promise<string> {
-  try {
-    return await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  } catch {
-    const res = await fetch(uri);
-    if (!res.ok) throw new Error("No se pudo leer la imagen para convertirla a PDF.");
-    const blob = await res.blob();
-
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () =>
-        reject(new Error("No se pudo leer la imagen (FileReader)."));
-      reader.onloadend = () => {
-        const result = reader.result;
-        if (typeof result !== "string")
-          return reject(new Error("Formato de lectura inválido."));
-        const commaIdx = result.indexOf(",");
-        if (commaIdx < 0) return reject(new Error("Base64 inválido."));
-        resolve(result.slice(commaIdx + 1));
-      };
-      reader.readAsDataURL(blob);
-    });
-
-    return base64;
-  }
-}
+type CreatePdfOptions = {
+  fileName?: string;
+  maxDimension?: number;
+  jpegQuality?: number;
+};
 
 function safeBaseName(name: string) {
   return name.trim().replace(/[^\w-]+/g, "_").slice(0, 40) || "img2pdf";
 }
 
+function sanitizePdfName(name: string) {
+  const safe = safeBaseName(name || "img2pdf");
+  return safe.toLowerCase().endsWith('.pdf') ? safe : `${safe}.pdf`;
+}
+
+async function ensureDir(uri: string) {
+  const info = await FileSystem.getInfoAsync(uri);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(uri, { intermediates: true });
+  }
+}
+
+async function optimizeImageForPdf(uri: string, maxDimension: number, jpegQuality: number): Promise<string> {
+  const actions: ImageManipulator.Action[] = [];
+  try {
+    const meta = await ImageManipulator.manipulateAsync(uri, [], { base64: false });
+    const width = meta.width ?? 0;
+    const height = meta.height ?? 0;
+    const largestSide = Math.max(width, height);
+
+    if (largestSide > maxDimension && largestSide > 0) {
+      if (width >= height) {
+        actions.push({ resize: { width: maxDimension } });
+      } else {
+        actions.push({ resize: { height: maxDimension } });
+      }
+    }
+  } catch {
+    // Si no podemos leer dimensiones, al menos reconvertimos a JPEG comprimido.
+  }
+
+  const output = await ImageManipulator.manipulateAsync(uri, actions, {
+    compress: jpegQuality,
+    format: ImageManipulator.SaveFormat.JPEG,
+    base64: false,
+  });
+
+  return output.uri;
+}
+
+async function readFileAsDataUri(uri: string, mime: string) {
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return `data:${mime};base64,${base64}`;
+}
+
+export async function getPdfPageCount(uri: string): Promise<number> {
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const pdf = await PDFDocument.load(`data:application/pdf;base64,${base64}`);
+  return pdf.getPageCount();
+}
+
 export async function createPdfFromImages(
   imageUris: string[],
-  opts?: { fileName?: string }
+  opts?: CreatePdfOptions
 ): Promise<{ uri: string; pages: number }> {
   if (!imageUris.length) {
     throw new Error("No hay imágenes para convertir.");
   }
 
-  const imgs: string[] = [];
+  const maxDimension = Math.max(1200, Math.min(opts?.maxDimension ?? 1800, 2600));
+  const jpegQuality = Math.max(0.65, Math.min(opts?.jpegQuality ?? 0.82, 0.95));
+
+  const pdf = await PDFDocument.create();
 
   for (const uri of imageUris) {
-    const base64 = await uriToBase64(uri);
-    imgs.push(`data:image/jpeg;base64,${base64}`);
+    const optimizedUri = await optimizeImageForPdf(uri, maxDimension, jpegQuality);
+    const dataUri = await readFileAsDataUri(optimizedUri, 'image/jpeg');
+    const embedded = await pdf.embedJpg(dataUri);
+    const page = pdf.addPage([embedded.width, embedded.height]);
+    page.drawImage(embedded, {
+      x: 0,
+      y: 0,
+      width: embedded.width,
+      height: embedded.height,
+    });
   }
 
-  const html = `
-  <!doctype html>
-  <html>
-    <head>
-      <meta charset="utf-8" />
-      <style>
-        @page { margin: 0; }
-        body { margin: 0; padding: 0; background: #000; }
-        .page {
-          width: 100%;
-          height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          page-break-after: always;
-        }
-        img {
-          width: 100%;
-          height: 100vh;
-          object-fit: contain;
-        }
-      </style>
-    </head>
-    <body>
-      ${imgs.map((src) => `<div class="page"><img src="${src}" /></div>`).join("")}
-    </body>
-  </html>`.trim();
+  const pdfBase64 = await pdf.saveAsBase64({ dataUri: false });
+  const dir = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory}pdfs/`;
+  await ensureDir(dir);
 
-  // Expo genera el PDF aquí
-  const { uri: tempUri } = await Print.printToFileAsync({ html });
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = sanitizePdfName(opts?.fileName || `img2pdf-${ts}`);
+  const outUri = `${dir}${ts}-${fileName}`;
 
-  const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const baseName = safeBaseName(opts?.fileName || "img2pdf");
-  const fileName = `${baseName}-${ts}.pdf`;
+  await FileSystem.writeAsStringAsync(outUri, pdfBase64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
 
-  /**
-   * Intentamos mover a un directorio persistente si existe.
-   * En Expo Go algunos entornos devuelven null en documentDirectory.
-   */
-  type FSLike = typeof FileSystem & {
-    documentDirectory?: string | null;
-    cacheDirectory?: string | null;
-  };
-
-  const fs = FileSystem as FSLike;
-  const dir = fs.documentDirectory ?? fs.cacheDirectory;
-
-  if (dir) {
-    const outUri = `${dir}${fileName}`;
-    try {
-      await FileSystem.moveAsync({ from: tempUri, to: outUri });
-      return { uri: outUri, pages: imageUris.length };
-    } catch {
-      // Si mover falla, usamos el tempUri igualmente
-      return { uri: tempUri, pages: imageUris.length };
-    }
-  }
-
-  // Si no existe directorio (caso Expo Go raro), usamos el archivo generado
-  return { uri: tempUri, pages: imageUris.length };
+  return { uri: outUri, pages: imageUris.length };
 }

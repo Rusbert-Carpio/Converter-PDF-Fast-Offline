@@ -50,10 +50,7 @@ function normalizePdfFileName(name: string) {
   return `${base}.pdf`;
 }
 
-async function ensurePermissions(t: ReturnType<typeof useApp>["t"]): Promise<void> {
-  const media = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!media.granted) throw new Error(t('imageToPdf', 'galleryPermissionDenied'));
-
+async function ensureCameraPermission(t: ReturnType<typeof useApp>["t"]): Promise<void> {
   const cam = await ImagePicker.requestCameraPermissionsAsync();
   if (!cam.granted) throw new Error(t('imageToPdf', 'cameraPermissionDenied'));
 }
@@ -202,7 +199,6 @@ export default function ImagesToPdfScreen() {
   async function onPickGallery() {
     try {
       setBusy(true);
-      await ensurePermissions(t);
       const picked = await pickFromGallery();
       if (!picked.length) return;
       setImages((prev) => [...prev, ...picked]);
@@ -216,7 +212,7 @@ export default function ImagesToPdfScreen() {
   async function onTakePhoto() {
     try {
       setBusy(true);
-      await ensurePermissions(t);
+      await ensureCameraPermission(t);
       const photo = await takePhoto();
       if (!photo) return;
       setImages((prev) => [...prev, photo]);
@@ -285,6 +281,8 @@ export default function ImagesToPdfScreen() {
       const baseNameForGenerator = sanitizeBaseName(pdfName);
       const { uri, pages } = await createPdfFromImages(images.map((x) => x.uri), {
         fileName: baseNameForGenerator,
+        maxDimension: maxQuality ? 2200 : 1700,
+        jpegQuality: maxQuality ? 0.92 : 0.8,
       });
 
       await addPdfToHistory({ uri, name: fileName });
