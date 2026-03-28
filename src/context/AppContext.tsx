@@ -2,13 +2,10 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Appearance, ColorSchemeName } from 'react-native';
 import { AppLanguage, translations } from '../i18n/translations';
-import { syncPremiumFromStore } from '../services/billing';
+import { cachePremiumStatus, syncPremiumFromStore } from '../services/billing';
+import { STORAGE_KEYS } from '../services/storageKeys';
 import { ResolvedTheme, ThemeMode } from '../theme/palettes';
 
-const KEY_IS_PREMIUM = 'ameda:isPremium';
-const KEY_LANGUAGE = 'ameda:language';
-const KEY_THEME_MODE = 'ameda:themeMode';
-const KEY_LANGUAGE_ONBOARDING_DONE = 'ameda:languageOnboardingDone';
 
 type TranslationTree = typeof translations.es;
 type SectionKey = keyof TranslationTree;
@@ -65,10 +62,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const [premiumRaw, languageRaw, themeRaw, onboardingRaw] = await Promise.all([
-          AsyncStorage.getItem(KEY_IS_PREMIUM),
-          AsyncStorage.getItem(KEY_LANGUAGE),
-          AsyncStorage.getItem(KEY_THEME_MODE),
-          AsyncStorage.getItem(KEY_LANGUAGE_ONBOARDING_DONE),
+          AsyncStorage.getItem(STORAGE_KEYS.isPremium),
+          AsyncStorage.getItem(STORAGE_KEYS.language),
+          AsyncStorage.getItem(STORAGE_KEYS.themeMode),
+          AsyncStorage.getItem(STORAGE_KEYS.languageOnboardingDone),
         ]);
 
         if (!mounted) return;
@@ -84,7 +81,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const premiumFromStore = await syncPremiumFromStore();
         if (mounted) setIsPremiumState(premiumFromStore);
-        await AsyncStorage.setItem(KEY_IS_PREMIUM, premiumFromStore ? 'true' : 'false');
+        await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.isPremium, premiumFromStore ? 'true' : 'false'),
+        cachePremiumStatus(premiumFromStore),
+      ]);
       } catch {}
     })();
 
@@ -102,7 +102,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const value = await syncPremiumFromStore();
         setIsPremiumState(value);
-        await AsyncStorage.setItem(KEY_IS_PREMIUM, value ? 'true' : 'false');
+        await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEYS.isPremium, value ? 'true' : 'false'),
+          cachePremiumStatus(value),
+        ]);
       } catch {
       } finally {
         syncing = false;
@@ -116,33 +119,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setIsPremium = async (value: boolean) => {
     setIsPremiumState(value);
-    await AsyncStorage.setItem(KEY_IS_PREMIUM, value ? 'true' : 'false');
+    await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEYS.isPremium, value ? 'true' : 'false'),
+          cachePremiumStatus(value),
+        ]);
   };
 
   const refreshPremiumStatus = async () => {
     const value = await syncPremiumFromStore();
     setIsPremiumState(value);
-    await AsyncStorage.setItem(KEY_IS_PREMIUM, value ? 'true' : 'false');
+    await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEYS.isPremium, value ? 'true' : 'false'),
+          cachePremiumStatus(value),
+        ]);
     return value;
   };
 
   const setLanguage = async (value: AppLanguage) => {
     setLanguageState(value);
-    await AsyncStorage.setItem(KEY_LANGUAGE, value);
+    await AsyncStorage.setItem(STORAGE_KEYS.language, value);
   };
 
   const completeLanguageOnboarding = async (value: AppLanguage) => {
     setLanguageState(value);
     setHasCompletedLanguageOnboarding(true);
     await Promise.all([
-      AsyncStorage.setItem(KEY_LANGUAGE, value),
-      AsyncStorage.setItem(KEY_LANGUAGE_ONBOARDING_DONE, 'true'),
+      AsyncStorage.setItem(STORAGE_KEYS.language, value),
+      AsyncStorage.setItem(STORAGE_KEYS.languageOnboardingDone, 'true'),
     ]);
   };
 
   const setThemeMode = async (value: ThemeMode) => {
     setThemeModeState(value);
-    await AsyncStorage.setItem(KEY_THEME_MODE, value);
+    await AsyncStorage.setItem(STORAGE_KEYS.themeMode, value);
   };
 
   const t = <S extends SectionKey, K extends NestedKey<TranslationTree[S]>>(section: S, key: K): TranslationTree[S][K] => {

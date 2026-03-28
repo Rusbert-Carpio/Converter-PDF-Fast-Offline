@@ -91,9 +91,9 @@ export default function ActionCard({
   const renderRight = () => {
     if (rightIcon) return rightIcon;
     if (rightIconName) {
-      return <MaterialCommunityIcons name={rightIconName} size={isHero ? 72 : 44} color={palette.accent} />;
+      return <MaterialCommunityIcons name={rightIconName} size={isHero ? 64 : 44} color={palette.accent} />;
     }
-    return <View style={{ width: isHero ? 72 : 44, height: isHero ? 72 : 44 }} />;
+    return <View style={{ width: isHero ? 64 : 44, height: isHero ? 64 : 44 }} />;
   };
 
   return (
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   heroTitleWrap: {
     zIndex: 2,
-    paddingRight: 10,
+    paddingRight: 6,
   },
   heroTitle: {
     fontSize: 25,
@@ -246,16 +246,16 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   heroGraphicArea: {
-    minHeight: 148,
+    minHeight: 140,
     justifyContent: 'flex-end',
   },
   heroGraphicAreaTight: {
-    minHeight: 126,
+    minHeight: 120,
   },
   heroPrimaryTile: {
     position: 'absolute',
-    left: 8,
-    bottom: 2,
+    left: 16,
+    bottom: 4,
     width: 126,
     height: 126,
     borderRadius: 28,
@@ -268,31 +268,33 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   heroPrimaryTileTight: {
-    left: 2,
-    bottom: 0,
-    width: 114,
-    height: 114,
+    left: 10,
+    bottom: 2,
+    width: 110,
+    height: 110,
     borderRadius: 24,
   },
   heroSecondaryWrap: {
     position: 'absolute',
-    right: 2,
-    bottom: 20,
+    right: 18,
+    bottom: 12,
+    opacity: 0.96,
   },
   heroSecondaryWrapTight: {
-    right: -2,
-    bottom: 14,
-    transform: [{ scale: 0.9 }],
+    right: 12,
+    bottom: 12,
+    transform: [{ scale: 0.88 }],
   },
   heroArrowBadge: {
     position: 'absolute',
-    left: 78,
-    top: 4,
+    left: 96,
+    bottom: 64,
+    transform: [{ rotate: '-8deg' }],
   },
   heroArrowBadgeTight: {
-    left: 70,
-    top: -2,
-    transform: [{ scale: 0.9 }],
+    left: 82,
+    bottom: 58,
+    transform: [{ rotate: '-8deg' }, { scale: 0.88 }],
   },
   compactContent: {
     flex: 1,

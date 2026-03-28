@@ -26,6 +26,8 @@ import PdfHistoryPickerModal from "../components/PdfHistoryPickerModal";
 import { useAppTheme } from "../hooks/useAppTheme";
 import {
   canConvertPdfToImages,
+  canUseRewarded,
+  consumeRewarded,
   recordPdfToImagesConversion,
   shouldShowPdfToImagesPaywall,
   Limits,
@@ -163,20 +165,25 @@ export default function PdfToImageScreenNative() {
 
   const pageList = useMemo(() => {
     if (!pages) return [] as number[];
+
     const from = clamp(Number(rangeFrom || 1), 1, pages);
     const to = clamp(Number(rangeTo || from), 1, pages);
     const start = Math.min(from, to);
     const end = Math.max(from, to);
+
     let picked = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
     if (!isPremium && picked.length > Limits.pdfToImageMaxPagesPerConversionFree) {
       picked = picked.slice(0, Limits.pdfToImageMaxPagesPerConversionFree);
     }
+
     return picked;
   }, [pages, rangeFrom, rangeTo, isPremium]);
 
   const setPdf = async (pdf: PickedPdf) => {
     setBusy(true);
     setProgressText(t("common", "loading") + "…");
+
     try {
       const localUri = await ensureLocalFile({ uri: pdf.uri, fileName: pdf.name });
       const count = await getPdfPageCount(localUri);
@@ -208,28 +215,55 @@ export default function PdfToImageScreenNative() {
       type: "application/pdf",
       copyToCacheDirectory: true,
     });
+
     if (res.canceled) return;
     const f = res.assets?.[0];
     if (!f?.uri) return;
+
     await setPdf({ uri: f.uri, name: f.name || `${t("common", "file")}.pdf` });
   };
 
   const onConvert = async () => {
     if (!source?.uri || !pages) return;
+
+    const from = Number(rangeFrom);
+    const to = Number(rangeTo);
+
+    if (
+      !Number.isInteger(from) ||
+      !Number.isInteger(to) ||
+      from < 1 ||
+      to < 1 ||
+      from > pages ||
+      to > pages ||
+      from > to
+    ) {
+      Alert.alert("Rango inválido");
+      return;
+    }
+
     if (!pageList.length) {
-      Alert.alert(t("pdfToImages", "selectPages"), t("pdfToImages", "choosePagesAlert"));
+      Alert.alert("Rango inválido");
       return;
     }
 
     let usedRewarded = false;
     if (!isPremium) {
-      const { freeOk, requiresRewarded } = await canConvertPdfToImages(false);
+      const { freeOk, requiresRewarded } = await canConvertPdfToImages(isPremium);
       if (!freeOk && requiresRewarded) {
+        const rewardQuotaAvailable = await canUseRewarded(isPremium, 'pdf_to_image_unlock');
+        if (!rewardQuotaAvailable) {
+          router.push('/plans');
+          return;
+        }
+
         const ok = await showRewarded();
         if (!ok) {
           Alert.alert(t("common", "premium"), t("pdfToImages", "rewardedBody"));
           return;
         }
+
+        await consumeRewarded('pdf_to_image_unlock');
         usedRewarded = true;
       }
     }
@@ -245,11 +279,16 @@ export default function PdfToImageScreenNative() {
 
       for (let idx = 0; idx < pageList.length; idx += 1) {
         const page = pageList[idx];
+        const internalPageIndex = page - 1;
+
         setProgressText(`${t("common", "loading")} ${idx + 1}/${pageList.length}`);
-        const image = await PdfPageImage.generate(source.uri, page, renderScale);
+
+        const image = await PdfPageImage.generate(source.uri, internalPageIndex, renderScale);
+
         if (!image?.uri) {
           throw new Error(`No se pudo generar la imagen de la página ${page}.`);
         }
+
         generatedForRange.push(image);
         await sleep(60);
       }
@@ -277,7 +316,7 @@ export default function PdfToImageScreenNative() {
       }
 
       if (!isPremium && usedRewarded) {
-        const showPaywall = await shouldShowPdfToImagesPaywall(false);
+        const showPaywall = await shouldShowPdfToImagesPaywall(isPremium);
         if (showPaywall) router.push("/plans");
       }
     } catch (e: any) {

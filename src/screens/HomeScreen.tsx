@@ -150,6 +150,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/images-to-pdf')}
             style={[styles.heroCard, isShort && styles.heroCardTight, isVeryShort && styles.heroCardVeryTight]}
             density={isShort ? 'tight' : 'regular'}
+            titleLines={2}
           />
 
           <View style={[styles.sideColumn, isShort && styles.sideColumnTight]}>
@@ -178,7 +179,7 @@ export default function HomeScreen() {
           subtitle={t('home', 'mergeSubtitle')}
           onPress={() => router.push('/merge-pdfs')}
           density={isShort ? 'tight' : 'regular'}
-          style={isShort ? styles.mergeCardTight : undefined}
+          style={[styles.mergeCard, isShort && styles.mergeCardTight]}
         />
       </View>
     </Screen>
@@ -194,7 +195,7 @@ const createStyles = (colors: ReturnType<typeof useAppTheme>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 14,
+      marginBottom: 12,
     },
     iconButton: {
       width: 42,
@@ -221,17 +222,17 @@ const createStyles = (colors: ReturnType<typeof useAppTheme>) =>
       fontSize: 12,
     },
     hero: {
-      marginBottom: 10,
-      alignItems: 'center',
-      marginTop: -30,
-    },
-    heroTight: {
       marginBottom: 8,
+      alignItems: 'center',
       marginTop: -40,
     },
+    heroTight: {
+      marginBottom: 4,
+      marginTop: -54,
+    },
     heroVeryTight: {
-      marginBottom: 6,
-      marginTop: -48,
+      marginBottom: 4,
+      marginTop: -54,
     },
     logoShell: {
       width: '100%',
@@ -268,42 +269,47 @@ const createStyles = (colors: ReturnType<typeof useAppTheme>) =>
     },
     row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
     rowTight: {
-      gap: 10,
+      gap: 8,
     },
     cardsWrap: {
-      marginTop: 10,
-      gap: 12,
+      marginTop: 6,
+      gap: 8,
     },
     cardsWrapTight: {
-      marginTop: 8,
-      gap: 10,
+      marginTop: 4,
+      gap: 8,
     },
     mainGrid: {
       flexDirection: 'row',
-      gap: 12,
+      gap: 8,
       alignItems: 'stretch',
     },
     mainGridNarrow: {
-      gap: 10,
+      gap: 8,
     },
     heroCard: {
       flex: 1.06,
+      minHeight: 0,
     },
     heroCardTight: {
       flex: 1.02,
+      minHeight: 0,
     },
     heroCardVeryTight: {
       flex: 1,
     },
     sideColumn: {
       flex: 0.94,
-      gap: 12,
+      gap: 8,
     },
     sideColumnTight: {
-      gap: 10,
+      gap: 8,
+    },
+    mergeCard: {
+      minHeight: 118,
     },
     mergeCardTight: {
-      minHeight: 104,
+      minHeight: 100,
     },
     dropdown: {
       position: 'absolute',
@@ -325,7 +331,7 @@ const createStyles = (colors: ReturnType<typeof useAppTheme>) =>
     dropItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 8,
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderBottomWidth: 1,

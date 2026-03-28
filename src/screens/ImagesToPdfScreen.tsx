@@ -25,7 +25,13 @@ import { Radii, Spacing, Typography } from "../theme";
 import { createPdfFromImages } from "../services/pdf";
 import { addPdfToHistory } from "../storage/pdfHistory";
 import { useApp } from "../context/AppContext";
-import { canUseRewarded, consumeRewarded, recordImgToPdfConversion } from "../services/monetization";
+import {
+  canConvertImgToPdf,
+  canUseRewarded,
+  consumeRewarded,
+  recordImgToPdfConversion,
+  shouldShowImgToPdfPaywall,
+} from "../services/monetization";
 import { showInterstitial, showRewarded } from "../services/ads";
 import { useAppTheme } from "../hooks/useAppTheme";
 
@@ -257,8 +263,28 @@ export default function ImagesToPdfScreen() {
         return;
       }
 
+      const { freeOk, requiresRewarded } = await canConvertImgToPdf(isPremium);
+      let usedRewardedForConversion = false;
+
+      if (!isPremium && !freeOk && requiresRewarded) {
+        const rewardQuotaAvailable = await canUseRewarded(isPremium, 'img_to_pdf_unlock');
+        if (!rewardQuotaAvailable) {
+          router.push('/plans');
+          return;
+        }
+
+        const earnedConversion = await showRewarded();
+        if (!earnedConversion) {
+          Alert.alert(t('common', 'premium'), t('imageToPdf', 'rewardedBody'));
+          return;
+        }
+
+        await consumeRewarded('img_to_pdf_unlock');
+        usedRewardedForConversion = true;
+      }
+
       setBusy(true);
-      let usedRewarded = false;
+      let usedRewarded = usedRewardedForConversion;
 
       if (maxQuality && !isPremium) {
         const ok = await canUseRewarded(isPremium, "max_quality");
@@ -303,6 +329,13 @@ export default function ImagesToPdfScreen() {
         setTimeout(() => {
           showInterstitial();
         }, 600);
+      }
+
+      if (!isPremium && usedRewardedForConversion) {
+        const showPaywall = await shouldShowImgToPdfPaywall(isPremium);
+        if (showPaywall) {
+          setTimeout(() => router.push('/plans'), 450);
+        }
       }
     } catch (e: any) {
       Alert.alert(t('common', 'error'), e?.message ?? 'No se pudo generar el PDF.');

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sanitizePdfName } from "../utils/files";
+import { STORAGE_KEYS } from "../services/storageKeys";
 
 export type PdfHistoryItem = {
   id: string;
@@ -8,7 +9,7 @@ export type PdfHistoryItem = {
   createdAt: number;
 };
 
-const KEY = "ameda_pdf_history_v1";
+const KEY = STORAGE_KEYS.pdfHistory;
 
 export async function getPdfHistory(): Promise<PdfHistoryItem[]> {
   try {

@@ -111,7 +111,7 @@ export default function MergePdfScreenNative() {
       Alert.alert(t('common', 'done'), t('merge', 'mergedDone'));
 
       if (!isPremium && usedRewarded) {
-        const showPaywall = await shouldShowMergePaywall();
+        const showPaywall = await shouldShowMergePaywall(isPremium);
         if (showPaywall) router.push("/plans");
       }
     } catch (e: any) {

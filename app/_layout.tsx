@@ -4,6 +4,7 @@ import { StatusBar, View, StyleSheet } from 'react-native';
 import FixedBannerAd from '../src/components/ads/FixedBannerAd';
 import { AppProvider, useApp } from '../src/context/AppContext';
 import { AppAlertProvider } from '../src/context/AppAlertContext';
+import { BannerProvider } from '../src/context/BannerContext';
 import { useFonts } from 'expo-font';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
@@ -46,7 +47,9 @@ export default function Layout() {
   return (
     <AppProvider>
       <AppAlertProvider>
-        <AppShell />
+        <BannerProvider>
+          <AppShell />
+        </BannerProvider>
       </AppAlertProvider>
     </AppProvider>
   );

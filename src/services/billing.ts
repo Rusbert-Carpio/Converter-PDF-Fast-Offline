@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const STORAGE_KEY_LAST_PREMIUM = 'ameda:billing:lastPremium';
+import { STORAGE_KEYS } from './storageKeys';
+
+const STORAGE_KEY_LAST_PREMIUM = STORAGE_KEYS.billingLastPremium;
 const DEFAULT_ANDROID_PRODUCT_ID = 'premium_subscription';
 const DEFAULT_ANDROID_BASE_PLANS = {
   monthly: 'premium-monthly',
