@@ -22,6 +22,7 @@ export type ThemePalette = {
   iconOnCard: string;
   overlay: string;
   shadow: string;
+  error: string;
 };
 
 export const lightPalette: ThemePalette = {
@@ -45,6 +46,7 @@ export const lightPalette: ThemePalette = {
   iconOnCard: '#FFFFFF',
   overlay: 'rgba(17,24,39,0.28)',
   shadow: '#000000',
+  error: '#DC2626',
 };
 
 export const darkPalette: ThemePalette = {
@@ -68,6 +70,7 @@ export const darkPalette: ThemePalette = {
   iconOnCard: '#FFFFFF',
   overlay: 'rgba(0,0,0,0.45)',
   shadow: '#000000',
+  error: '#F87171',
 };
 
 export function getPalette(theme: ResolvedTheme): ThemePalette {

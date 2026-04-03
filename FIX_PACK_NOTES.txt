@@ -1,0 +1,19 @@
+FIX PACK v1
+
+Reemplaza estos archivos sobre tu proyecto base.
+
+Incluye fixes para:
+- restauración de premium más robusta
+- configuración explícita de billing en app.json
+- cache inicial de premium mejorada
+- card hero Imagen -> PDF remaquetada
+- token colors.error agregado al tema
+- traducciones faltantes y textos hardcodeados críticos
+- pantalla de privacidad integrada con theme/layout
+- refresco de Mis PDFs al volver a la pantalla
+- validación de rango en PDF -> imágenes
+
+Validación manual obligatoria después de aplicar:
+1) reinstalar y probar restore premium con la cuenta compradora
+2) verificar que productId y basePlans coincidan exactamente con Play Console
+3) ejecutar prueba visual de la home en tu dispositivo

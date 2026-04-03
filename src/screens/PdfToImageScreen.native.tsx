@@ -39,11 +39,20 @@ type GeneratedImage = { uri: string; width: number; height: number };
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function decodeBase64ToUint8Array(base64: string) {
+  if (typeof globalThis.atob !== 'function') {
+    throw new Error('Base64 decoder no disponible en este entorno.');
+  }
+
+  const chars = globalThis.atob(base64);
+  return Uint8Array.from(chars, (char) => char.charCodeAt(0));
+}
+
 async function getPdfPageCount(uri: string) {
   const base64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const bytes = decodeBase64ToUint8Array(base64);
   const doc = await PDFDocument.load(bytes);
   return doc.getPageCount();
 }
@@ -238,12 +247,12 @@ export default function PdfToImageScreenNative() {
       to > pages ||
       from > to
     ) {
-      Alert.alert("Rango inválido");
+      Alert.alert(t("pdfToImages", "invalidRangeTitle"), t("pdfToImages", "invalidRangeBody"));
       return;
     }
 
     if (!pageList.length) {
-      Alert.alert("Rango inválido");
+      Alert.alert(t("pdfToImages", "invalidRangeTitle"), t("pdfToImages", "invalidRangeBody"));
       return;
     }
 

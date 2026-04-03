@@ -1,126 +1,129 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Linking,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
-const PRIVACY_URL =
-  'https://sites.google.com/view/privacy-policy-of-converter/inicio';
+import Screen from '../components/layout/Screen';
+import AppHeader from '../components/layout/AppHeader';
+import { useApp } from '../context/AppContext';
+import { useAppTheme } from '../hooks/useAppTheme';
+
+const PRIVACY_URL = 'https://sites.google.com/view/privacy-policy-of-converter/inicio';
+const SUPPORT_EMAIL = 'amedastudios@gmail.com';
+const LAST_UPDATED = '2026-03-12';
 
 export default function PrivacyPolicyScreen() {
-  const openPrivacyPolicy = () => {
-    Linking.openURL(PRIVACY_URL);
-  };
+  const colors = useAppTheme();
+  const { t } = useApp();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const sections = [
+    { title: t('privacy', 'section1Title'), body: t('privacy', 'section1Body') },
+    { title: t('privacy', 'section2Title'), body: t('privacy', 'section2Body') },
+    { title: t('privacy', 'section3Title'), body: t('privacy', 'section3Body') },
+    { title: t('privacy', 'section4Title'), body: t('privacy', 'section4Body') },
+    { title: t('privacy', 'section5Title'), body: t('privacy', 'section5Body') },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Privacy Policy Summary</Text>
-      <Text style={styles.updated}>Last updated: March 12, 2026</Text>
+    <Screen>
+      <AppHeader title={t('privacy', 'title')} onBackPress={() => router.back()} />
 
-      <Text style={styles.paragraph}>
-        Converter Image to PDF is designed to convert images to PDF, convert PDFs to images,
-        merge PDF files, preview documents and export them from the device. Core conversions
-        are performed locally on the device.
-      </Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.heroCard}>
+          <Text style={styles.title}>{t('privacy', 'title')}</Text>
+          <Text style={styles.updated}>{t('privacy', 'updated')}: {LAST_UPDATED}</Text>
+          <Text style={styles.intro}>{t('privacy', 'intro')}</Text>
+        </View>
 
-      <Text style={styles.sectionTitle}>How the app uses permissions</Text>
-      <Text style={styles.paragraph}>
-        Camera access is requested only when the user taps the option to take a photo.
-        The app does not request camera access when the user only selects existing images.
-      </Text>
-      <Text style={styles.paragraph}>
-        The app is configured to avoid broad photo-library permissions on Android. Users select
-        files and images through system pickers or export files to a folder they choose.
-      </Text>
+        {sections.map((section) => (
+          <View key={section.title} style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionBody}>{section.body}</Text>
+          </View>
+        ))}
 
-      <Text style={styles.sectionTitle}>Local processing and storage</Text>
-      <Text style={styles.paragraph}>
-        Image-to-PDF, PDF merge and most document processing happen locally on the device.
-        Generated files may be stored temporarily in app storage and may also be exported by the
-        user to a chosen folder or shared manually.
-      </Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('privacy', 'fullPolicyTitle')}</Text>
+          <Text style={styles.sectionBody}>{t('privacy', 'fullPolicyBody')}</Text>
+          <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} style={({ pressed }) => [styles.linkButton, pressed && { opacity: 0.92 }]}>
+            <Text style={styles.linkButtonText}>{t('privacy', 'openPolicy')}</Text>
+          </Pressable>
+          <Text selectable style={styles.linkText}>{PRIVACY_URL}</Text>
+        </View>
 
-      <Text style={styles.sectionTitle}>Ads and analytics-related data</Text>
-      <Text style={styles.paragraph}>
-        This app uses Google AdMob. Google and its partners may process identifiers, IP address,
-        device and diagnostic information, and ad interaction data according to Google's policies
-        in order to serve, measure and protect ads.
-      </Text>
-
-      <Text style={styles.sectionTitle}>Subscriptions</Text>
-      <Text style={styles.paragraph}>
-        Premium purchases are handled by Google Play Billing. Payment card information is not
-        collected or stored directly by the developer through the app.
-      </Text>
-
-      <Text style={styles.sectionTitle}>Data retention and deletion</Text>
-      <Text style={styles.paragraph}>
-        Files generated by the app remain on the device unless the user deletes them. Local
-        history entries can be removed by the user from the app. Data processed by third parties
-        such as Google AdMob or Google Play Billing is subject to those providers' own retention
-        practices and policies.
-      </Text>
-
-      <Text style={styles.sectionTitle}>Third parties</Text>
-      <Text style={styles.paragraph}>
-        The app may rely on Google Play services, Google AdMob and Google Play Billing. Their
-        handling of data is governed by their own terms and privacy notices.
-      </Text>
-
-      <Text style={styles.sectionTitle}>Full public privacy policy</Text>
-      <Text style={styles.paragraph}>
-        Read the full public privacy policy here:
-      </Text>
-      <Text style={styles.link} onPress={openPrivacyPolicy}>
-        https://sites.google.com/view/privacy-policy-of-converter/inicio
-      </Text>
-
-      <Text style={styles.sectionTitle}>Contact</Text>
-      <Text style={styles.email}>amedastudios@gmail.com</Text>
-
-      <View style={{ height: 40 }} />
-    </ScrollView>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('privacy', 'contactTitle')}</Text>
+          <Text style={styles.sectionBody}>{SUPPORT_EMAIL}</Text>
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  updated: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  paragraph: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 10,
-    color: '#444',
-  },
-  link: {
-    fontSize: 15,
-    color: '#2e78ff',
-    marginBottom: 10,
-  },
-  email: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useAppTheme>) =>
+  StyleSheet.create({
+    content: {
+      paddingBottom: 24,
+      gap: 14,
+    },
+    heroCard: {
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '900',
+      color: colors.text,
+    },
+    updated: {
+      marginTop: 6,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textMuted,
+    },
+    intro: {
+      marginTop: 10,
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.text,
+    },
+    sectionCard: {
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      gap: 8,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      color: colors.text,
+    },
+    sectionBody: {
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textMuted,
+    },
+    linkButton: {
+      marginTop: 4,
+      alignSelf: 'flex-start',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+    },
+    linkButtonText: {
+      color: colors.textOnPrimary,
+      fontWeight: '800',
+    },
+    linkText: {
+      marginTop: 8,
+      color: colors.textMuted,
+      fontSize: 12.5,
+      lineHeight: 18,
+    },
+  });

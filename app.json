@@ -84,6 +84,15 @@
       "reactCompiler": true
     },
     "extra": {
+      "billing": {
+        "android": {
+          "productId": "premium_subscription",
+          "basePlans": {
+            "monthly": "premium-monthly",
+            "yearly": "premium-yearly"
+          }
+        }
+      },
       "ads": {
         "android": {
           "banner": "ca-app-pub-1944424443685697/9901327436",

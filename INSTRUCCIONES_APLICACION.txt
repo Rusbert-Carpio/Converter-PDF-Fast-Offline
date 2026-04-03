@@ -1,0 +1,28 @@
+Archivos a reemplazar:
+- package.json
+- src/screens/PdfViewerScreen.native.tsx
+
+Comandos a seguir desde la raíz del proyecto:
+
+1) Instalar dependencias según el package.json nuevo
+npm install
+
+2) Regenerar Android porque cambió una dependencia nativa
+npx expo prebuild --platform android --clean
+
+3) Probar en el dispositivo
+npx expo run:android
+
+4) Si el visor abre bien, generar el AAB para Play Console
+- En la nube con Expo:
+  eas build --platform android --profile production
+
+- O localmente:
+  cd android
+  .\gradlew.bat clean
+  .\gradlew.bat app:bundleRelease
+
+Notas:
+- No basta con `npx expo start -c`, porque aquí cambió una librería nativa.
+- Si PowerShell no reconoce gradlew.bat, usa .\gradlew.bat
+- Sube primero el nuevo .aab a una pista de prueba cerrada y revisa si Play Console deja de mostrar el error de 16 KB.

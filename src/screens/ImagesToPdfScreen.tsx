@@ -338,7 +338,7 @@ export default function ImagesToPdfScreen() {
         }
       }
     } catch (e: any) {
-      Alert.alert(t('common', 'error'), e?.message ?? 'No se pudo generar el PDF.');
+      Alert.alert(t('common', 'error'), e?.message ?? t('imageToPdf', 'generateError'));
     } finally {
       setBusy(false);
     }
@@ -363,7 +363,7 @@ export default function ImagesToPdfScreen() {
           return;
         }
       } catch {
-        Alert.alert(t('common', 'save'), 'Se abrirá el menú para guardar o compartir el PDF.');
+        Alert.alert(t('common', 'save'), t('imageToPdf', 'shareFallbackInfo'));
       }
 
       await sharePdf(lastPdfUri, lastPdfName || normalizePdfFileName(pdfName), t);

@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Tone = 'coral' | 'blue' | 'amber' | 'violet';
 type Variant = 'hero' | 'compact' | 'wide';
+type HeroGraphicMode = 'default' | 'single';
 
 type Density = 'regular' | 'tight';
 
@@ -20,6 +21,7 @@ type Props = {
   titleLines?: number;
   style?: ViewStyle;
   density?: Density;
+  heroGraphicMode?: HeroGraphicMode;
 };
 
 const tones = {
@@ -74,6 +76,7 @@ export default function ActionCard({
   titleLines,
   style,
   density = 'regular',
+  heroGraphicMode = 'default',
 }: Props) {
   const palette = tones[tone];
   const isHero = variant === 'hero';
@@ -129,11 +132,17 @@ export default function ActionCard({
           </View>
 
           <View style={[styles.heroGraphicArea, isTight && styles.heroGraphicAreaTight]}>
-            <View style={[styles.heroPrimaryTile, isTight && styles.heroPrimaryTileTight, { backgroundColor: palette.tile }]}>{renderLeft()}</View>
-            <View style={[styles.heroSecondaryWrap, isTight && styles.heroSecondaryWrapTight]}>{renderRight()}</View>
-            <View style={[styles.heroArrowBadge, isTight && styles.heroArrowBadgeTight]}>
-              <MaterialCommunityIcons name="arrow-top-right" size={28} color={palette.accent} />
-            </View>
+            {heroGraphicMode === 'single' ? (
+              <View style={[styles.heroSingleTile, isTight && styles.heroSingleTileTight, { backgroundColor: palette.tile }]}>{renderLeft()}</View>
+            ) : (
+              <>
+                <View style={[styles.heroPrimaryTile, isTight && styles.heroPrimaryTileTight, { backgroundColor: palette.tile }]}>{renderLeft()}</View>
+                <View style={[styles.heroSecondaryWrap, isTight && styles.heroSecondaryWrapTight]}>{renderRight()}</View>
+                <View style={[styles.heroArrowBadge, isTight && styles.heroArrowBadgeTight]}>
+                  <MaterialCommunityIcons name="arrow-top-right" size={28} color={palette.accent} />
+                </View>
+              </>
+            )}
           </View>
         </>
       ) : (
@@ -251,6 +260,24 @@ const styles = StyleSheet.create({
   },
   heroGraphicAreaTight: {
     minHeight: 120,
+  },
+  heroSingleTile: {
+    alignSelf: 'center',
+    width: 126,
+    height: 126,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  heroSingleTileTight: {
+    width: 110,
+    height: 110,
+    borderRadius: 24,
   },
   heroPrimaryTile: {
     position: 'absolute',
