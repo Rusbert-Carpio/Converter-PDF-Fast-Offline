@@ -146,11 +146,11 @@ export default function HomeScreen() {
             title={t('home', 'imageToPdfTitle')}
             subtitle={t('home', 'imageToPdfSubtitle')}
             leftIconName="image-multiple"
-            rightIconName="file-pdf-box"
             onPress={() => router.push('/images-to-pdf')}
             style={[styles.heroCard, isShort && styles.heroCardTight, isVeryShort && styles.heroCardVeryTight]}
             density={isShort ? 'tight' : 'regular'}
             titleLines={2}
+            heroGraphicMode="single"
           />
 
           <View style={[styles.sideColumn, isShort && styles.sideColumnTight]}>

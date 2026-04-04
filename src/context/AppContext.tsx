@@ -61,8 +61,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const [premiumRaw, languageRaw, themeRaw, onboardingRaw] = await Promise.all([
+        const [premiumRaw, billingPremiumRaw, languageRaw, themeRaw, onboardingRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.isPremium),
+          AsyncStorage.getItem(STORAGE_KEYS.billingLastPremium),
           AsyncStorage.getItem(STORAGE_KEYS.language),
           AsyncStorage.getItem(STORAGE_KEYS.themeMode),
           AsyncStorage.getItem(STORAGE_KEYS.languageOnboardingDone),
@@ -70,7 +71,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!mounted) return;
 
-        setIsPremiumState(premiumRaw === 'true');
+        setIsPremiumState(premiumRaw === 'true' || billingPremiumRaw === '1');
         setLanguageState(normalizeLanguage(languageRaw));
         setThemeModeState(normalizeThemeMode(themeRaw));
         setHasCompletedLanguageOnboarding(onboardingRaw === 'true');

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, Alert } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Screen from "../components/layout/Screen";
 import AppHeader from "../components/layout/AppHeader";
@@ -15,11 +15,13 @@ export default function MyPdfsScreen() {
   const { t } = useApp();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [items, setItems] = useState<PdfHistoryItem[]>([]);
-  const load = async () => setItems(await getPdfHistory());
+  const load = useCallback(async () => setItems(await getPdfHistory()), []);
 
-  useEffect(() => {
-    load();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onOpen = (item: PdfHistoryItem) => {
     router.push({ pathname: "/pdf-viewer", params: { uri: item.uri, name: item.name } });
@@ -35,17 +37,21 @@ export default function MyPdfsScreen() {
   };
 
   const onDelete = async (item: PdfHistoryItem) => {
-    Alert.alert(t('myPdfs', 'deleteTitle'), `${t('myPdfs', 'deleteBodyPrefix')} "${item.name}" ${t('myPdfs', 'deleteBodySuffix')}`, [
+    Alert.alert(
+      t('myPdfs', 'deleteTitle'),
+      `${t('myPdfs', 'deleteBodyPrefix')} "${item.name}" ${t('myPdfs', 'deleteBodySuffix')}\n\n${t('myPdfs', 'deleteHelper')}`,
+      [
       { text: t('common', 'cancel'), style: "cancel" },
       {
         text: t('common', 'delete'),
         style: "destructive",
         onPress: async () => {
           await removePdfFromHistory(item.id);
-          load();
+          await load();
         },
       },
-    ]);
+    ],
+    );
   };
 
   return (

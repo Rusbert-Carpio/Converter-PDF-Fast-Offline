@@ -22,6 +22,12 @@ type BillingExtra = {
   iosSkus?: string[];
 };
 
+type PremiumStatus = {
+  active: boolean;
+  source: 'store' | 'cache';
+  checkedAt: number;
+};
+
 export type BillingPlan = {
   id: string;
   productId: string;
@@ -181,37 +187,131 @@ function purchaseMatchesProductId(purchase: any, productIds: string[]) {
   const candidates = uniq([
     purchase?.productId,
     purchase?.id,
+    purchase?.originalJson?.productId,
+    purchase?.originalJson?.productIds?.[0],
     ...(Array.isArray(purchase?.productIds) ? purchase.productIds : []),
   ].filter(Boolean));
 
   return candidates.some((candidate) => productIds.includes(candidate));
 }
 
+function parsePurchaseTimestamp(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return asNumber;
+    const asDate = Date.parse(value);
+    if (Number.isFinite(asDate)) return asDate;
+  }
+  return null;
+}
+
+function purchaseLooksExpired(purchase: any) {
+  const expiry = parsePurchaseTimestamp(
+    purchase?.expirationDate ??
+      purchase?.expirationDateIOS ??
+      purchase?.expiryTimeMillis ??
+      purchase?.expiryDate ??
+      purchase?.expiryDateMs ??
+      purchase?.expirationDateAndroid,
+  );
+
+  if (!expiry) return false;
+  return expiry <= Date.now();
+}
+
+function purchaseIsPurchasedState(purchase: any) {
+  const state = purchase?.purchaseStateAndroid ?? purchase?.purchaseState;
+  if (state === undefined || state === null || state === '') return true;
+  const normalized = String(state).toLowerCase();
+  return normalized === '1' || normalized === 'purchased' || normalized === 'purchasedstate';
+}
+
+function isActivePremiumPurchase(purchase: any, productIds: string[]) {
+  if (!purchaseMatchesProductId(purchase, productIds)) return false;
+  if (!purchaseIsPurchasedState(purchase)) return false;
+  if (purchaseLooksExpired(purchase)) return false;
+  return true;
+}
+
+async function readStorePremiumStatus(productIds: string[]): Promise<boolean> {
+  await primeProductsCache();
+  const iap = await getIapModule();
+
+  const checks: Array<() => Promise<boolean>> = [];
+
+  if (typeof iap.hasActiveSubscriptions === 'function') {
+    checks.push(async () => {
+      const result = await iap.hasActiveSubscriptions(productIds);
+      return !!result;
+    });
+  }
+
+  if (typeof iap.getAvailablePurchases === 'function') {
+    checks.push(async () => {
+      const attempts = [
+        undefined,
+        { onlyIncludeActiveItems: true },
+      ];
+
+      for (const options of attempts) {
+        try {
+          const purchases = options
+            ? await iap.getAvailablePurchases(options)
+            : await iap.getAvailablePurchases();
+
+          if (Array.isArray(purchases) && purchases.some((purchase: any) => isActivePremiumPurchase(purchase, productIds))) {
+            return true;
+          }
+        } catch {
+          // seguimos con la siguiente estrategia
+        }
+      }
+
+      return false;
+    });
+  }
+
+  if (typeof iap.getActiveSubscriptions === 'function') {
+    checks.push(async () => {
+      const purchases = await iap.getActiveSubscriptions();
+      return Array.isArray(purchases) && purchases.some((purchase: any) => isActivePremiumPurchase(purchase, productIds));
+    });
+  }
+
+  for (const check of checks) {
+    try {
+      if (await check()) return true;
+    } catch {
+      // seguimos con la siguiente estrategia
+    }
+  }
+
+  return false;
+}
+
+async function savePremiumCache(active: boolean) {
+  await AsyncStorage.setItem(STORAGE_KEY_LAST_PREMIUM, active ? '1' : '0');
+}
+
+async function getCachedPremiumStatus(): Promise<PremiumStatus> {
+  const active = (await AsyncStorage.getItem(STORAGE_KEY_LAST_PREMIUM)) === '1';
+  return { active, source: 'cache', checkedAt: Date.now() };
+}
+
 export async function syncPremiumFromStore(): Promise<boolean> {
-  const fallback = (await AsyncStorage.getItem(STORAGE_KEY_LAST_PREMIUM)) === '1';
-  if (!isNativeStoreSupported()) return fallback;
+  const fallback = await getCachedPremiumStatus();
+  if (!isNativeStoreSupported()) return fallback.active;
 
   const productIds = getSubscriptionProductIds();
-  if (!productIds.length) return fallback;
+  if (!productIds.length) return fallback.active;
 
   try {
-    await primeProductsCache();
-    const iap = await getIapModule();
-    let active = false;
-
-    if (typeof iap.hasActiveSubscriptions === 'function') {
-      active = await iap.hasActiveSubscriptions(productIds);
-    }
-
-    if (!active && typeof iap.getAvailablePurchases === 'function') {
-      const purchases = await iap.getAvailablePurchases();
-      active = Array.isArray(purchases) && purchases.some((purchase: any) => purchaseMatchesProductId(purchase, productIds));
-    }
-
-    await AsyncStorage.setItem(STORAGE_KEY_LAST_PREMIUM, active ? '1' : '0');
+    const active = await readStorePremiumStatus(productIds);
+    await savePremiumCache(active);
     return active;
   } catch {
-    return fallback;
+    return fallback.active;
   }
 }
 
@@ -220,11 +320,8 @@ export async function restorePremiumPurchases(): Promise<boolean> {
   const productIds = getSubscriptionProductIds();
   if (!productIds.length) return false;
 
-  await primeProductsCache();
-  const iap = await getIapModule();
-  const purchases = await iap.getAvailablePurchases();
-  const active = Array.isArray(purchases) && purchases.some((purchase: any) => purchaseMatchesProductId(purchase, productIds));
-  await AsyncStorage.setItem(STORAGE_KEY_LAST_PREMIUM, active ? '1' : '0');
+  const active = await readStorePremiumStatus(productIds);
+  await savePremiumCache(active);
   return active;
 }
 

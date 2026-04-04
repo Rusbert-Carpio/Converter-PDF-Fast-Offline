@@ -97,6 +97,10 @@ export const translations = {
       section4Body: 'Los usuarios free pueden ver banners, interstitials o rewarded. Los usuarios premium disfrutan de una experiencia sin anuncios, sujeta a la configuración final de suscripción.',
       section5Title: '5. Contacto',
       section5Body: 'Añade aquí tu correo o enlace de soporte oficial para solicitudes relacionadas con privacidad, eliminación de datos o consultas legales.',
+      fullPolicyTitle: 'Política completa',
+      fullPolicyBody: 'También puedes consultar la versión pública completa de la política de privacidad.',
+      openPolicy: 'Abrir política completa',
+      contactTitle: 'Correo de contacto',
     },
     historyPicker: {
       defaultTitle: 'Selecciona un PDF',
@@ -153,6 +157,8 @@ export const translations = {
       selectedImages: 'Imágenes seleccionadas',
       selectedCountSuffix: 'seleccionadas',
       noImages: 'Aún no has agregado imágenes.',
+      generateError: 'No se pudo generar el PDF.',
+      shareFallbackInfo: 'Se abrirá el menú para guardar o compartir el PDF.',
     },
     pdfToImages: {
       title: 'PDF a imágenes',
@@ -228,6 +234,7 @@ export const translations = {
       deleteTitle: 'Eliminar',
       deleteBodyPrefix: '¿Eliminar',
       deleteBodySuffix: 'del historial?',
+      deleteHelper: 'Esta acción solo quita el registro del historial de la app.',
     },
     pdfViewer: {
       preparing: 'Preparando PDF...',
@@ -283,6 +290,8 @@ export const translations = {
       pendingBody: 'La tienda está procesando tu compra.',
       purchaseErrorTitle: 'No se pudo completar la compra',
       purchaseErrorBody: 'Intenta nuevamente en unos minutos.',
+      storeSectionTitle: 'Compras y restauración',
+      storeSectionBody: 'Si ya pagaste en esta cuenta, usa restaurar compras para recuperar Premium en una reinstalación o en otro dispositivo.',
     },
     premiumScreen: {
       title: 'Hazte Premium',
@@ -395,6 +404,10 @@ export const translations = {
       section4Body: 'Free users may see banners, interstitials or rewarded ads. Premium users enjoy an ad-free experience, subject to the final subscription setup.',
       section5Title: '5. Contact',
       section5Body: 'Add your email or official support link here for privacy requests, data deletion or legal questions.',
+      fullPolicyTitle: 'Full policy',
+      fullPolicyBody: 'You can also read the complete public version of the privacy policy.',
+      openPolicy: 'Open full policy',
+      contactTitle: 'Support email',
     },
     historyPicker: {
       defaultTitle: 'Select a PDF',
@@ -451,6 +464,8 @@ export const translations = {
       selectedImages: 'Selected images',
       selectedCountSuffix: 'selected',
       noImages: 'You have not added images yet.',
+      generateError: 'Could not generate the PDF.',
+      shareFallbackInfo: 'The save/share menu will open for the generated PDF.',
     },
     pdfToImages: {
       title: 'PDF to images',
@@ -526,6 +541,7 @@ export const translations = {
       deleteTitle: 'Delete',
       deleteBodyPrefix: 'Delete',
       deleteBodySuffix: 'from history?',
+      deleteHelper: 'This only removes the entry from the app history.',
     },
     pdfViewer: {
       preparing: 'Preparing PDF...',
@@ -581,6 +597,8 @@ export const translations = {
       pendingBody: 'The store is still processing your purchase.',
       purchaseErrorTitle: 'Could not complete the purchase',
       purchaseErrorBody: 'Please try again in a few minutes.',
+      storeSectionTitle: 'Purchases and restore',
+      storeSectionBody: 'If you already paid on this account, use restore purchases to recover Premium after reinstalling or on another device.',
     },
     premiumScreen: {
       title: 'Go Premium',
