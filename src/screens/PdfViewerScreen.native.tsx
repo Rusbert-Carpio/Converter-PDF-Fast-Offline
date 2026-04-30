@@ -8,7 +8,7 @@ import * as Sharing from "expo-sharing";
 import { ensureLocalFile, makeShareableCopy } from "../utils/files";
 import { useApp } from "../context/AppContext";
 import { showInterstitial } from "../services/ads";
-import { recordPdfView } from "../services/monetization";
+import { recordFullscreenShown, recordPdfView } from "../services/monetization";
 import { useAppTheme } from "../hooks/useAppTheme";
 import Screen from "../components/layout/Screen";
 import AppHeader from "../components/layout/AppHeader";
@@ -41,8 +41,27 @@ export default function PdfViewerScreenNative() {
 
       try {
         const { shouldShowInterstitial } = await recordPdfView(isPremium);
-        if (shouldShowInterstitial) await showInterstitial();
-      } catch {}
+        if (shouldShowInterstitial) {
+          const shown = await showInterstitial();
+          if (!shown) {
+            if (alive) {
+              setLoadError(t("pdfViewer", "adRequiredBody"));
+              setLoading(false);
+            }
+            return;
+          }
+
+          await recordFullscreenShown('pdf_viewer');
+        }
+      } catch {
+        if (!isPremium) {
+          if (alive) {
+            setLoadError(t("pdfViewer", "adRequiredBody"));
+            setLoading(false);
+          }
+          return;
+        }
+      }
 
       try {
         const copy = await ensureLocalFile({ uri: String(params.uri), fileName: title });

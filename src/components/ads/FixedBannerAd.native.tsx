@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { usePathname } from 'expo-router';
 import { BannerAd } from 'react-native-google-mobile-ads';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { useBanner } from '../../context/BannerContext';
-import { getAdUnitIds, ensureAdsInitialized } from '../../services/adConfig';
+import { getAdUnitIds } from '../../services/adConfig';
 import { AD_BANNER_FALLBACK_HEIGHT, getAdaptiveBannerSize, shouldShowBannerForRoute } from '../../services/adPolicy';
 
 export const BANNER_HEIGHT = AD_BANNER_FALLBACK_HEIGHT;
@@ -17,11 +17,6 @@ export default function FixedBannerAd() {
   const pathname = usePathname();
   const adUnitIds = useMemo(() => getAdUnitIds(), []);
   const canRender = !isPremium && shouldShowBannerForRoute(pathname);
-
-  useEffect(() => {
-    if (!canRender) return;
-    ensureAdsInitialized().catch(() => {});
-  }, [canRender]);
 
   if (!canRender) return null;
 

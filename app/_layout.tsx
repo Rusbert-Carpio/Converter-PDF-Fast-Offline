@@ -9,12 +9,19 @@ import { useFonts } from 'expo-font';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { useAppTheme } from '../src/hooks/useAppTheme';
+import { ensureAdsInitialized } from '../src/services/adConfig';
+import { warmUpAds } from '../src/services/ads';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppShell() {
   const colors = useAppTheme();
   const { resolvedTheme } = useApp();
+
+  useEffect(() => {
+    ensureAdsInitialized().catch(() => {});
+    warmUpAds().catch(() => {});
+  }, []);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}> 

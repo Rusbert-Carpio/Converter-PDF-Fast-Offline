@@ -30,7 +30,7 @@ import {
   canUseRewarded,
   consumeRewarded,
   recordImgToPdfConversion,
-  shouldShowImgToPdfPaywall,
+  recordFullscreenShown,
 } from "../services/monetization";
 import { showInterstitial, showRewarded } from "../services/ads";
 import { useAppTheme } from "../hooks/useAppTheme";
@@ -263,31 +263,11 @@ export default function ImagesToPdfScreen() {
         return;
       }
 
-      const { freeOk, requiresRewarded } = await canConvertImgToPdf(isPremium);
-      let usedRewardedForConversion = false;
+      const { requiresRewarded } = await canConvertImgToPdf(isPremium);
+      const usedRewardedForConversion = !isPremium && requiresRewarded;
 
-      if (!isPremium && !freeOk && requiresRewarded) {
-        const rewardQuotaAvailable = await canUseRewarded(isPremium, 'img_to_pdf_unlock');
-        if (!rewardQuotaAvailable) {
-          router.push('/plans');
-          return;
-        }
-
-        const earnedConversion = await showRewarded();
-        if (!earnedConversion) {
-          Alert.alert(t('common', 'premium'), t('imageToPdf', 'rewardedBody'));
-          return;
-        }
-
-        await consumeRewarded('img_to_pdf_unlock');
-        usedRewardedForConversion = true;
-      }
-
-      setBusy(true);
-      let usedRewarded = usedRewardedForConversion;
-
-      if (maxQuality && !isPremium) {
-        const ok = await canUseRewarded(isPremium, "max_quality");
+      if (usedRewardedForConversion) {
+        const ok = await canUseRewarded(isPremium, "img_to_pdf_unlock");
         if (!ok) {
           router.push("/plans");
           return;
@@ -295,13 +275,15 @@ export default function ImagesToPdfScreen() {
 
         const earned = await showRewarded();
         if (!earned) {
-          Alert.alert(t('imageToPdf', 'maxQualityIncompleteTitle'), t('imageToPdf', 'maxQualityIncompleteBody'));
+          Alert.alert(t('imageToPdf', 'rewardedIncompleteTitle'), t('imageToPdf', 'rewardedIncompleteBody'));
           return;
         }
-        await consumeRewarded("max_quality");
-        usedRewarded = true;
-        setTimeout(() => router.push("/plans"), 450);
+
+        await consumeRewarded("img_to_pdf_unlock");
       }
+
+      setBusy(true);
+      const usedRewarded = usedRewardedForConversion;
 
       const fileName = normalizePdfFileName(pdfName);
       const baseNameForGenerator = sanitizeBaseName(pdfName);
@@ -326,17 +308,14 @@ export default function ImagesToPdfScreen() {
 
       const { shouldShowInterstitial } = await recordImgToPdfConversion(isPremium, usedRewarded);
       if (shouldShowInterstitial) {
-        setTimeout(() => {
-          showInterstitial();
+        setTimeout(async () => {
+          const shown = await showInterstitial();
+          if (shown) {
+            await recordFullscreenShown('img_to_pdf');
+          }
         }, 600);
       }
 
-      if (!isPremium && usedRewardedForConversion) {
-        const showPaywall = await shouldShowImgToPdfPaywall(isPremium);
-        if (showPaywall) {
-          setTimeout(() => router.push('/plans'), 450);
-        }
-      }
     } catch (e: any) {
       Alert.alert(t('common', 'error'), e?.message ?? t('imageToPdf', 'generateError'));
     } finally {

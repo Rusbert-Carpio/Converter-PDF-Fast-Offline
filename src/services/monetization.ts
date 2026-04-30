@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from './storageKeys';
 
 export type RewardFeature = 'max_quality' | 'merge_pdf' | 'img_to_pdf_unlock' | 'pdf_to_image_unlock';
+export type FullscreenSource = 'pdf_viewer' | 'img_to_pdf' | 'general';
 
 type CounterKey =
   | 'imgToPdfFreeUsed'
@@ -22,6 +23,11 @@ export type MonetizationState = {
   maxQualityUsed: number;
   pdfViewsTotal: number;
   imgToPdfSuccessTotal: number;
+  lastFullscreenAt: number | null;
+  lastPdfViewerInterstitialAt: number | null;
+  pdfViewerSessionOpens: number;
+  imgToPdfInterstitialShownThisSession: boolean;
+  sessionStartedAt: number | null;
 };
 
 const FEATURE_LIMITS: Record<RewardFeature, { perDay: number | null; counter?: CounterKey }> = {
@@ -41,6 +47,10 @@ export const Limits = {
   interstitialEveryPdfViews: 2,
   imgToPdfInterstitialEverySuccesses: 4,
   rewardedGlobalCapPerDay: 5,
+  fullscreenMinGapMs: 120000,
+  pdfViewerInterstitialCooldownMs: 180000,
+  imgToPdfInterstitialFromFirstSuccess: true,
+  pdfToImageRewardedRequiredFromFirstUse: true,
 } as const;
 
 function todayKey() {
@@ -59,15 +69,30 @@ const DEFAULT_STATE: MonetizationState = {
   maxQualityUsed: 0,
   pdfViewsTotal: 0,
   imgToPdfSuccessTotal: 0,
+  lastFullscreenAt: null,
+  lastPdfViewerInterstitialAt: null,
+  pdfViewerSessionOpens: 0,
+  imgToPdfInterstitialShownThisSession: false,
+  sessionStartedAt: null,
 };
+
+function getNow() {
+  return Date.now();
+}
 
 function normalizeState(input: Partial<MonetizationState> | null | undefined): MonetizationState {
   if (!input?.dateKey || input.dateKey !== todayKey()) return { ...DEFAULT_STATE };
-  return {
+  const normalized: MonetizationState = {
     ...DEFAULT_STATE,
     ...input,
     dateKey: input.dateKey,
   };
+
+  if (!normalized.sessionStartedAt) {
+    normalized.sessionStartedAt = getNow();
+  }
+
+  return normalized;
 }
 
 async function readStorageKey(key: string): Promise<MonetizationState | null> {
@@ -95,11 +120,19 @@ async function loadState(): Promise<MonetizationState> {
     return legacy;
   }
 
-  return { ...DEFAULT_STATE };
+  return { ...DEFAULT_STATE, sessionStartedAt: getNow() };
 }
 
 function rewardQuotaAvailable(state: MonetizationState, feature: RewardFeature) {
   const config = FEATURE_LIMITS[feature];
+
+  // Conversion unlocks must remain unlimited for free users as long as they
+  // complete the required ad. We intentionally skip the global rewarded cap
+  // and any per-day quota for these two features.
+  if (feature === 'img_to_pdf_unlock' || feature === 'pdf_to_image_unlock') {
+    return true;
+  }
+
   if (state.rewardedGlobalUsed >= Limits.rewardedGlobalCapPerDay) return false;
   if (config.counter && config.perDay !== null) {
     return state[config.counter] < config.perDay;
@@ -114,6 +147,12 @@ async function incrementRewarded(state: MonetizationState, feature: RewardFeatur
     state[config.counter] += 1;
   }
   await saveState(state);
+}
+
+function canShowFullscreen(state: MonetizationState, isPremium: boolean) {
+  if (isPremium) return false;
+  if (!state.lastFullscreenAt) return true;
+  return getNow() - state.lastFullscreenAt >= Limits.fullscreenMinGapMs;
 }
 
 export async function canUseRewarded(isPremium: boolean, feature: RewardFeature = 'max_quality') {
@@ -131,9 +170,7 @@ export async function consumeRewarded(feature: RewardFeature = 'max_quality') {
 
 export async function canConvertImgToPdf(isPremium: boolean) {
   if (isPremium) return { freeOk: true, requiresRewarded: false };
-  const state = await loadState();
-  const freeOk = state.imgToPdfFreeUsed < Limits.imgToPdfFreePerDay;
-  return { freeOk, requiresRewarded: !freeOk };
+  return { freeOk: false, requiresRewarded: true };
 }
 
 export async function recordImgToPdfConversion(isPremium: boolean, usedRewarded: boolean) {
@@ -143,24 +180,27 @@ export async function recordImgToPdfConversion(isPremium: boolean, usedRewarded:
     else state.imgToPdfFreeUsed += 1;
   }
   state.imgToPdfSuccessTotal += 1;
+
+  const shouldShowInterstitial = false;
+
   await saveState(state);
 
   return {
-    shouldShowInterstitial:
-      !isPremium &&
-      state.imgToPdfSuccessTotal > 1 &&
-      state.imgToPdfSuccessTotal % Limits.imgToPdfInterstitialEverySuccesses === 0,
+    shouldShowInterstitial,
   };
 }
 
 export async function shouldShowImgToPdfPaywall(isPremium: boolean) {
-  if (isPremium) return false;
-  const state = await loadState();
-  return state.imgToPdfRewardedUsed >= Limits.imgToPdfPaywallAfterRewarded;
+  // Image → PDF remains unlimited for free users while they keep watching the
+  // required ad for each conversion.
+  return false;
 }
 
 export async function canConvertPdfToImages(isPremium: boolean) {
   if (isPremium) return { freeOk: true, requiresRewarded: false };
+  if (Limits.pdfToImageRewardedRequiredFromFirstUse) {
+    return { freeOk: false, requiresRewarded: true };
+  }
   const state = await loadState();
   const freeOk = state.pdfToImgFreeUsed < Limits.pdfToImgFreePerDay;
   return { freeOk, requiresRewarded: !freeOk };
@@ -175,9 +215,9 @@ export async function recordPdfToImagesConversion(isPremium: boolean, usedReward
 }
 
 export async function shouldShowPdfToImagesPaywall(isPremium: boolean) {
-  if (isPremium) return false;
-  const state = await loadState();
-  return state.pdfToImgRewardedUsed >= Limits.pdfToImgPaywallAfterRewarded;
+  // PDF → Images also remains unlimited for free users while they keep
+  // completing the required rewarded ad for each conversion.
+  return false;
 }
 
 export async function requiresRewardedForMerge(isPremium: boolean) {
@@ -188,7 +228,6 @@ export async function recordMerge(isPremium: boolean, rewardedWatched: boolean) 
   if (isPremium) return;
   const state = await loadState();
   if (!rewardedWatched) return;
-  // mergeRewardedUsed is updated when the rewarded quota is consumed.
   await saveState(state);
 }
 
@@ -201,17 +240,39 @@ export async function shouldShowMergePaywall(isPremium = false) {
 export async function recordPdfView(isPremium: boolean): Promise<{ count: number; shouldShowInterstitial: boolean }> {
   const state = await loadState();
   state.pdfViewsTotal += 1;
+  state.pdfViewerSessionOpens += 1;
+
+  const shouldShowInterstitial = !isPremium;
+
   await saveState(state);
   return {
     count: state.pdfViewsTotal,
-    shouldShowInterstitial:
-      !isPremium && state.pdfViewsTotal > 1 && state.pdfViewsTotal % Limits.interstitialEveryPdfViews === 0,
+    shouldShowInterstitial,
   };
 }
 
-export async function shouldForceInterstitialForPdfView(isPremium: boolean, newCount: number) {
-  if (isPremium) return false;
-  return newCount > 1 && newCount % Limits.interstitialEveryPdfViews === 0;
+export async function shouldForceInterstitialForPdfView(isPremium: boolean, _newCount: number) {
+  return !isPremium;
+}
+
+export async function recordFullscreenShown(source: FullscreenSource = 'general') {
+  const state = await loadState();
+  const now = getNow();
+  state.lastFullscreenAt = now;
+
+  if (source === 'pdf_viewer') {
+    state.lastPdfViewerInterstitialAt = now;
+  }
+
+  if (source === 'img_to_pdf') {
+    state.imgToPdfInterstitialShownThisSession = true;
+  }
+
+  await saveState(state);
+}
+
+export async function getMonetizationDebugSnapshot() {
+  return loadState();
 }
 
 export async function resetMonetizationState() {
